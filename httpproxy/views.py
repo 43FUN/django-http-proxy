@@ -5,6 +5,7 @@ import re
 from django.http import HttpResponse
 from django.utils.six.moves import urllib
 from django.views.generic import View
+from django.conf import settings
 
 from httpproxy.recorder import ProxyRecorder
 
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 REWRITE_REGEX = re.compile(r'((?:src|action|href)=["\'])/(?!\/)')
+
 
 class HttpProxy(View):
     """
@@ -84,6 +86,21 @@ class HttpProxy(View):
             self.record(response)
         if self.rewrite:
             response = self.rewrite_response(request, response)
+
+        try:
+            param_list = settings.HTTP_PROXY_ACCESS_PARAM_LIST
+        except:
+            param_list = None
+
+        if param_list:
+            param_list = settings.HTTP_PROXY_ACCESS_PARAM_LIST.get(
+                request.META['REQUEST_METHOD'], None
+            )
+            if param_list:
+                for param in param_list:
+                    for k, v in param.items():
+                        response[k] = v
+
         return response
 
     def normalize_request(self, request):
